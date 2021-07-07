@@ -1,3 +1,7 @@
+# Human Activity Recognition
+## Author: Mickey Kislev
+## Date: "7/7/2021"
+
 ### Synopsis
 
 In this current paper, the author tries to predict the performance of
