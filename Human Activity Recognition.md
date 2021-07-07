@@ -1,6 +1,6 @@
-Human Activity Recognition
-Author: Mickey Kislev
-Date: "7/7/2021"
+## Human Activity Recognition
+### Author: Mickey Kislev
+### Date: "7/7/2021"
 
 ### Synopsis
 
