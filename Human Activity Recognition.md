@@ -113,7 +113,7 @@ looks as presented in fig. 1:
     fancyRpartPlot(modFit$finalModel)
 
 ![fig. 1: the tree of possible results of dumbbell
-lifting](Human%20Activity%20Recognition_files/figure-markdown_strict/treePlot-1.png)
+lifting](treePlot-1.png)
 
 ### Checking accuracy
 
