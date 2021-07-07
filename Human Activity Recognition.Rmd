@@ -1,0 +1,152 @@
+---
+title: "Human Activity Recognition"
+author: "Mickey Kislev"
+date: "7 7 2021"
+output: html_document
+
+---
+
+```{r setup, include=FALSE}
+# Set Locallity
+Sys.setlocale(category = "LC_ALL", locale = "english")
+
+# Set numbers format
+options("scipen" = 20)
+
+knitr::opts_chunk$set(echo = TRUE)
+
+# Define working derectory
+setwd("C:/Users/micke/Documents/John Hopkins/Course 8/Finel Project");
+getwd()
+```
+
+### Synopsis
+
+In this current paper, the author tries to predict the performance of weight lifting according to certain parameters of fitness, as they were measured by Velloso et. al. (2003). The author secceed to build a model, with a 85% accurecity, for predicting the ability of the participent to lift dumbbell. 
+
+### Loading the data
+The data was saved locally and uploaded by its csv file.
+```{r dataloading, warning=FALSE, message=FALSE}
+# Load packages
+requiredPackages <- c('tidyverse', 'R.utils', 'caret', 'rattle', 'rmarkdown');
+for(p in requiredPackages){
+  if(!require(p,character.only = TRUE)) install.packages(p)
+  library(p,character.only = TRUE)
+}
+rm(p, requiredPackages)
+
+
+# Save a copy locally 
+if (!file.exists("pml-training.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv","pml-training.csv")
+}
+
+if (!file.exists("pml-testing.csv")) {
+  download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv","pml-testing.csv")
+}
+
+Source_training <- read.csv("pml-training.csv", 
+                      stringsAsFactors = FALSE,
+                      na.strings = "#DIV/0!", 
+                      skipNul = TRUE);
+
+Source_prediction <- read.csv("pml-testing.csv", 
+                     stringsAsFactors = FALSE,
+                     na.strings = "#DIV/0!", 
+                     skipNul = TRUE);
+
+```
+An empty field was defined as "#DIV/0!" in the original file, so I used the "na.strings" definition to convert them to NA fields. I also difine a skiping of empty colomns by using the "skipNul" definition.
+
+### The preparation of the data
+Then I run several commands for cleaning of close to 0 variable, which are not indicative, using the following script:
+```{r cleaningZero}
+# remove variables with Nearly Zero Variance
+near_zero <- nearZeroVar(Source_training)
+Source_training <- Source_training[, -near_zero]
+Source_prediction  <- Source_prediction[, -near_zero]
+dim(Source_training)
+
+```
+I Added to that a cleaning of the data from unfilled columns
+```{r cleaningNA}
+# Clean NA's fields
+NA_clean <- apply(Source_training,2,function(x) {sum(is.na(x))}) 
+Source_training <- Source_training[,which(NA_clean == 0)]
+NA_clean <- apply(Source_prediction,2,function(x) {sum(is.na(x))}) 
+Source_prediction <- Source_prediction[,which(NA_clean == 0)]
+dim(Source_training)
+```
+Finally, Ideleted the first 7 columns which contain  technical information of 
+date and user name.
+```{r cleaningTech}
+# Delete the first 7 veriables which are not relevent
+Source_training <- Source_training[,-c(1:7)]
+Source_prediction <- Source_prediction[,-c(1:7)]
+dim(Source_training)
+```
+
+
+### Creating a model
+Since the data contain such a large number of observation, It was possible to split the data into three subsets of: train (60%), test (20%) and validation (20%) sets:
+```{r createSet}
+set.seed(685)
+inTrain <- createDataPartition(y=Source_training$classe,
+                               p=0.6, list=FALSE)
+training <- Source_training[inTrain,]
+testing <- Source_training[-inTrain,]
+
+# create the test and the validation sets
+inTest <- createDataPartition(y=testing$classe, p=0.5, list=FALSE)
+validation <- testing[inTest,]
+testing <- testing[-inTest,]
+```
+I, than, commanded the R consule to calculate for me the best variables and the conditions, which anentually will become the model, for predicting the participent to lift dumbbell performance (var. "Classe")
+```{r FindVar, results='hide', message=FALSE,warning=FALSE}
+# Choosing the veriables
+modFit <- train(classe ~ .,
+                method="rpart",
+                trControl = trainControl(method = "repeatedcv", number = 5, repeats = 5),
+                data=training, 
+                tuneLength = 52)
+print(modFit$finalModel)
+```
+I used the CART model using the method "rpart", using a cross-validation several time using the "repeatedcv" method. the reasults graphically looks as presented in fig. 1:
+```{r treePlot, message=FALSE,warning=FALSE, fig.cap="fig. 1: the tree of possible results of  dumbbell lifting"}
+# Check the conditions
+fancyRpartPlot(modFit$finalModel)
+```
+
+
+### Checking accuracy
+For checking the accuracy of the model, I used the test set, split by me earlier:
+```{r accuracyTest}
+# Predict on the test case of the train
+testing$predict <- predict(modFit,newdata=testing)
+testing$classe <- factor(testing$classe)
+
+# compare results with the test of the trail
+confusionMatrix(testing$classe,testing$predict)
+```
+The check showed 87% accuracy. I, than used the validation set, as a duble check
+```{r accuracyValidation}
+# Predict on the validation case of the train
+validation$predict <- predict(modFit,newdata=validation)
+validation$classe <- factor(validation$classe)
+
+# compare results with the test of the train
+confusionMatrix(validation$classe,validation$predict)
+```
+This set showed a resembling accuracy of 86.5%, which means that the accuracy of the model is about ~86% and above to predict the performance of a subject, lifting dumbbell.
+
+### Forecast: performing a prediction
+As we now have the model to predict, I used this model to predict the outcome of 20 attempts to lift dumbbell, using a special dataset, which was not part of the train set, and provided separately:
+```{r forecast}
+# predict on test values
+predict(modFit,newdata=Source_prediction)
+```
+These outcomes are the prediction of the system for 20 observation of test dataset, provided separately.
+
+
+### Reference:
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
